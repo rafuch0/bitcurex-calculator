@@ -1,0 +1,69 @@
+body {background: #DEDEDE; margin: 0 auto;}
+
+.wrapper {
+	width:660px;
+	margin: 0 auto;
+	}
+#btcIn, #cashIn {
+	width: 100px;
+}
+
+#btcIn,  #cashInUnit, #cashOut, #currentPrice,
+#cashIn, #btcOutUnit, #btcOut {
+	display:inline-block; 
+	padding: 10px;
+	border: 1px solid #ABABAB;
+	font-size: 16px;
+	cursor: pointer;
+	background-color: #fff;
+	}
+#cashOut {
+	background-image:url('bitcoin_cash.png');
+}
+
+#btcOut {
+	background-image:url('bitcoin_gold.png');
+}
+
+#btcOut, #cashOut {
+	background-color: #E5FF66;
+	background-repeat:no-repeat;
+	border: 1px solid #ABABAB;
+	padding: 11px;
+	width: 200px;
+	background-position: 10px 4px;
+	font-size: 16px;
+	margin-left:5px;
+	padding-left: 50px;
+	font-size: 16px;
+	font-family:Arial,Helvetica,sans-serif;	
+	vertical-align:baseline;
+}
+
+.info {
+	font-size: 16px;
+	font-family:Arial,Helvetica,sans-serif;
+	color: #3D3D3D;
+	padding-right: 20px;
+}
+
+.title {
+	margin: 10px 0 0 0px;
+	letter-spacing: 3px;
+    font-weight: bolder;
+}
+
+.title, .operator {
+	font-size: 24px;
+	color: #DEDEDE;
+	color: orange;
+	font-family:Arial,Helvetica,sans-serif;	
+	vertical-align:baseline;
+}
+.bit {
+	color: #fff;
+}
+
+#currentPrice {
+	margin-left: 11px;
+}

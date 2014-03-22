@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Bitcurex - Calculator</title>
+	<meta http-equiv="Access-Control-Allow-Origin" content="*">
+	<link rel="stylesheet" href="css.css" />
+</head>
+<body>
+
+<div class="wrapper">
+<p class="title"><span class="bit">Bit</span>curex</p>
+<hr/>
+	<p class="info">Current Price is: <span id="currentPrice"></span></p>
+<hr/>
+	<span class="info">Bitcoin to Cash</span><input id="btcIn" onkeyup="updateWanted(this);" value="1.0"/>
+	<select id="cashInUnit" onchange="updateUnit(this);">
+		<option value="pln" selected="selected">PLN</option>
+		<option value="usd">USD</option>
+		<option value="gbp">GBP</option>
+		<option value="eur">EUR</option>
+		<option value="aud">AUD</option>
+	</select><div id="cashOut"></div>
+<hr/>
+	<span class="info">Cash to Bitcoin</span><input id="cashIn" onkeyup="updateWanted(this);" value="100.0"/>
+	<select id="btcOutUnit" onchange="updateUnit(this);">
+		<option value="pln" selected="selected">PLN</option>
+		<option value="usd">USD</option>
+		<option value="gbp">GBP</option>
+		<option value="eur">EUR</option>
+		<option value="aud">AUD</option>
+	</select><div id="btcOut"></div>
+<hr/>
+</div>
+</body>
+<script>
+
+function loadJSONDataYQL(url, callback)
+{
+	var xmlhttp = new XMLHttpRequest();
+
+	xmlhttp.onreadystatechange=function()
+	{
+		if((xmlhttp.readyState == 4) && (xmlhttp.status == 200))
+		{
+			callback(filterYQLData(xmlhttp.responseText));
+		}
+	};
+
+	xmlhttp.open("GET", 'http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20html%20where%20url%3D\''+encodeURIComponent(url)+'\'%0A&format=xml&diagnostics=false&callback=foo', true);
+	xmlhttp.send();
+}
+
+function filterYQLData(data)
+{
+	data = data.replace(/^foo\(/, '');
+	data = data.replace(/\);$/, '');
+	data = JSON.parse(data);
+
+	if(data['results'][0])
+	{
+		data = data['results'][0].split("\n")[1];
+		data = data.replace(/^.*\{/g, '{');
+		data = data.replace(/\}.*$/g, '}');
+		data = data.replace(/^.*<p>/g, '');
+		data = data.replace(/<\/p>.*$/g, '');
+		return data;
+	}
+}
+
+function loadJSONData(url, callback)
+{
+	var xmlhttp = new XMLHttpRequest();
+
+	xmlhttp.onreadystatechange=function()
+	{
+		if((xmlhttp.readyState == 4) && (xmlhttp.status == 200))
+		{
+			callback(xmlhttp['responseText']);
+		}
+	};
+
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+}
+
+var btcDatas = [{ 'last': 9999, 'time': 0 }];
+var fxDatas = [{ 'usd': 3, 'pln': 1, 'gbp': 4.8, 'eur': 4.1, 'aud': 2.8 }];
+var btcOutUnit = 'pln';
+var cashInUnit = 'pln';
+var btcIn = 1.0;
+var cashIn = 100.0;
+
+function updateWanted(object)
+{
+	if(object.id == 'btcIn')
+	{
+		btcIn = parseFloat(object.value);
+	}
+	else
+	{
+		cashIn = parseFloat(object.value);
+	}
+
+	updatePage();
+}
+
+function updateUnit(object)
+{
+	if(object.id == 'btcOutUnit')
+	{
+		btcOutUnit = object.value;
+	}
+	else if(object.id == 'cashInUnit')
+	{
+		cashInUnit = object.value;
+	}
+
+	updatePage();
+}
+
+function fetchFXData()
+{
+	loadJSONDataYQL('http://download.finance.yahoo.com/d/quotes.csv?e=.csv&f=c4l1&s=USDPLN=X,GBPPLN=X,EURPLN=X,AUDPLN=X', recieveFXData);
+}
+
+function recieveFXData(data)
+{
+	if(!data) return;
+
+	var newData = data;
+
+	newData = newData.split(" ");
+
+	newData = { pln: 1.0, usd: parseFloat(newData[0].split(',')[1]), gbp: parseFloat(newData[1].split(',')[1]), eur: parseFloat(newData[2].split(',')[1]), aud: parseFloat(newData[3].split(',')[1]) };
+
+	if(newData && (newData.usd != fxDatas[fxDatas.length - 1].usd))
+	{
+		fxDatas.push(newData);
+
+		updatePage();
+	}
+	else
+	{
+		console.log('No Updates to FX Datas');
+	}
+}
+
+function fetchBTCData()
+{
+	loadJSONDataYQL('https://pln.bitcurex.com/data/ticker.json', recieveBTCData);
+}
+
+function recieveBTCData(data)
+{
+	if(!data) return;
+
+	var newData = JSON.parse(data);
+
+	if(newData && (newData.last != btcDatas[btcDatas.length - 1].last))
+	{
+		btcDatas.push(newData);
+
+		updatePage();
+	}
+	else
+	{
+		console.log('No Updates to BTC Datas');
+	}
+}
+
+function updatePage()
+{
+	var currentPrice = btcDatas[btcDatas.length - 1].last;
+	var cashOut = btcIn * (currentPrice / fxDatas[fxDatas.length - 1][cashInUnit]);
+	var btcOut = cashIn / (currentPrice / fxDatas[fxDatas.length - 1][btcOutUnit]);
+
+	document.getElementById('btcOut').innerHTML = btcOut;
+	document.getElementById('cashOut').innerHTML = cashOut;
+	document.getElementById('currentPrice').innerHTML = currentPrice;
+
+	console.log(btcDatas);
+	console.log(fxDatas);
+	showLastTime();
+}
+
+function init()
+{
+	fetchBTCData();
+	fetchFXData();
+	setInterval(fetchBTCData, 7500);
+	setInterval(fetchFXData, 120000);
+	setInterval(showLastTime, 60000);
+}
+
+function showLastTime()
+{
+	console.log(getTime(Math.floor((new Date).getTime()/1000.0 - btcDatas[btcDatas.length - 1].time)*1000).human);
+}
+
+window.onload = init;
+
+function getTime(ms)
+{
+        function strPrimary(unit)
+        {
+                if(values[unit] > 1)
+                        return values[unit] + ' ' + intervals[unit].txts;
+                else
+                        return values[unit] + ' ' + intervals[unit].txt;
+        }
+
+        function strSecondary(unitBig, unitSmall)
+        {
+                var tmp = Math.floor(values[unitSmall] - (values[unitBig] * intervals[unitBig].multiple));
+
+                if(tmp > 0)
+                {
+                        if(tmp > 1)
+                                return ' ' + tmp + ' ' + intervals[unitSmall].txts;
+                        else
+                                return ' ' + tmp + ' ' + intervals[unitSmall].txt;
+                }
+                else
+                        return '';
+        }
+
+        function strHuman(unitBig, unitSmall)
+        {
+                if(unitSmall)
+                        return ''+strPrimary(unitBig)+strSecondary(unitBig, unitSmall);
+                else
+                        return strPrimary(unitBig);
+        }
+
+        ms = Math.floor(ms);
+        var values = {
+                        ms: ms,
+                        s: Math.floor(ms / 1000),
+                        m: Math.floor(ms / (1000*60)),
+                        h: Math.floor(ms / (1000*60*60)),
+                        d: Math.floor(ms / (1000*60*60*24)),
+                        w: Math.floor(ms / (1000*60*60*24*7)),
+                        mo: Math.floor(ms / (1000*60*60*24*30.4583)),
+                        y: Math.floor(ms / (1000*60*60*24*365.25)),
+                        de: Math.floor(ms / (1000*60*60*24*365.25*10)),
+                        ce: Math.floor(ms / (1000*60*60*24*365.25*10*10))
+        };
+
+        var intervals = {
+                ce: { txt: 'century', txts: 'centuries', multiple: 10 },
+                de: { txt: 'decade', txts: 'decades', multiple: 10 },
+                y: { txt: 'year', txts: 'years', multiple: 12 },
+                mo: { txt: 'month', txts: 'months', multiple: 4.351 },
+                w: { txt: 'week', txts: 'weeks', multiple: 7 },
+                d: { txt: 'day', txts: 'days', multiple: 24 },
+                h: { txt: 'hour', txts: 'hours', multiple: 60 },
+                m: { txt: 'minute', txts: 'minutes', multiple: 60 },
+                s: { txt: 'second', txts: 'seconds', multiple: 1000 },
+                ms: { txt: 'millisecond', txts: 'milliseconds', multiple: 1}
+        };
+
+        if(values.ce >= 1)
+                values.human = strHuman('ce', 'de');
+        else if(values.de >= 1)
+                values.human = strHuman('de', 'y');
+        else if(values.y >= 1)
+                values.human = strHuman('y', 'mo');
+        else if(values.mo >= 1)
+                values.human = strHuman('mo', 'w');
+        else if(values.w >= 1)
+                values.human = strHuman('w', 'd');
+        else if(values.d >= 1)
+                values.human = strHuman('d', 'h');
+        else if(values.h >= 1)
+                values.human = strHuman('h', 'm');
+        else if(values.m >= 1)
+                values.human = strHuman('m', 's');
+        else if(values.s >= 1)
+                values.human = strHuman('s', 'ms');
+        else
+                values.human = strHuman('ms');
+
+        return values;
+}
+
+</script>
+</body>
+</html>
